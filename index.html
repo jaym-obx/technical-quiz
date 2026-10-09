@@ -63,6 +63,8 @@
     font-family:inherit;font-size:10pt;color:var(--darkblue);background:var(--white);
   }
   input:focus{outline:2px solid var(--obxblue);outline-offset:0;border-color:var(--obxblue);}
+  /* Honeypot field: hidden from people, visible to bots */
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
   .intro{font-size:10pt;color:var(--slate);margin:18px 0 24px;line-height:1.5;}
   .q{
     border-top:1px solid #E3EAEF;
@@ -114,6 +116,7 @@
     background:var(--white);max-width:440px;width:100%;border-radius:6px;
     padding:30px 28px 24px;border-top:6px solid var(--orange);position:relative;
   }
+  .pop.fail{border-top-color:var(--red);}
   .pop h2{font-size:18px;font-weight:700;margin:0 0 10px;color:var(--darkblue);}
   .pop p{font-size:10pt;line-height:1.55;color:var(--slate);margin:0 0 8px;}
   .pop .close{
@@ -124,6 +127,11 @@
     margin-top:16px;background:var(--darkblue);color:var(--white);border:none;
     border-radius:3px;padding:10px 22px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
   }
+  .pop .alt{
+    display:none;margin:16px 0 0 10px;background:none;color:var(--obxblue);border:1px solid var(--obxblue);
+    border-radius:3px;padding:9px 18px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .pop .alt.show{display:inline-block;}
 </style>
 </head>
 <body>
@@ -143,7 +151,11 @@
         <input type="date" id="date">
       </div>
     </div>
-    <p class="intro">Answer every question, then choose Submit results. Your answers are graded on this page and a pre-filled email opens for you to send.</p>
+    <div class="hp" aria-hidden="true">
+      <label for="website">Website</label>
+      <input type="text" id="website" tabindex="-1" autocomplete="off">
+    </div>
+    <p class="intro">Answer every question, then choose Submit results. Your answers are graded on this page and sent automatically to the OuterBox team. No email account is needed.</p>
     <div id="quiz"></div>
     <div class="actions">
       <button class="submit" id="submitBtn">Submit results</button>
@@ -155,20 +167,28 @@
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="pop">
+  <div class="pop" id="pop">
     <button class="close" id="popClose" aria-label="Close">&times;</button>
-    <h2>Thank you, your answers have been submitted</h2>
-    <p>Your graded answers are shown on the page behind this window. Correct answers are highlighted in green, and anything you missed is marked in red.</p>
-    <p>A pre-filled email has opened in a new tab. Send it to complete your submission.</p>
+    <h2 id="popTitle">Thank you, your answers have been submitted</h2>
+    <p id="popMsg1">Your graded answers are shown on the page behind this window. Correct answers are highlighted in green, and anything you missed is marked in red.</p>
+    <p id="popMsg2">Your results have been sent. There is nothing else you need to do.</p>
     <button class="ok" id="popOk">Got it</button>
+    <button class="alt" id="popAlt">Send by email instead</button>
   </div>
 </div>
 
 <script>
-var QUIZ = [{"q": "What does technical SEO refer to?", "a": ["The process of writing keyword-rich page copy that satisfies user search intent", "The process of optimizing a website's architecture, coding, and other technical elements so search engines can crawl and index its pages", "The process of earning backlinks from authoritative domains to build site authority", "The process of managing paid search campaigns alongside organic listings"], "correct": 1}, {"q": "Which group is best positioned to influence a site's technical SEO metrics?", "a": ["Copywriters, bloggers, and copyeditors who produce page content", "Sales representatives and account managers who own the client relationship", "Web developers, programmers, and infrastructure managers who control the site and servers", "Social media managers who distribute content across channels"], "correct": 2}, {"q": "When did Google introduce Core Web Vitals as a set of website performance metrics?", "a": ["In August of 2014, at the same time HTTPS became a ranking signal", "In May of 2020, as metrics it considers critical to a good user experience", "In January of 2018, alongside the first mobile speed update", "In November of 2022, as part of the helpful content system"], "correct": 1}, {"q": "What does Largest Contentful Paint (LCP) measure, and what is the recommended target?", "a": ["How much page elements shift during load, with a target score of 0.1 or less", "How quickly the largest visible element on a page loads, within 2.5 seconds of load start", "How long the server takes to return the first byte, within 200 milliseconds", "How quickly the page becomes fully interactive, within 5 seconds"], "correct": 1}, {"q": "First Input Delay (FID), the original interactivity metric in Core Web Vitals, measures what, and what target should you hit?", "a": ["The total number of HTTP requests a page makes, ideally under 50 requests", "The time until the largest image finishes rendering, ideally under 2.5 seconds", "The time a user waits before they can perform an action such as clicking a link or button, ideally under 100 milliseconds", "The percentage of the viewport occupied by ads, ideally under 30 percent"], "correct": 2}, {"q": "What does Cumulative Layout Shift (CLS) measure, and what threshold should you stay under?", "a": ["The visual stability of a page as elements load, keeping the score at 0.1 or less", "The cumulative file size of all page assets, keeping it under 1 megabyte", "The number of layout templates used across a site, keeping it under 10", "The delay before the first paint of any content, keeping it under 1 second"], "correct": 0}, {"q": "What did Google's May 2021 Page Experience rollout add to search ranking?", "a": ["It replaced mobile-first indexing with a desktop-first crawler for all websites", "It removed page speed entirely as a consideration in organic rankings", "It made HTTPS the only technical requirement Google would evaluate going forward", "It made Core Web Vitals a ranking factor alongside signals like mobile-friendliness, safe browsing, and HTTPS security"], "correct": 3}, {"q": "Interaction to Next Paint (INP) replaced FID as the Core Web Vitals interactivity metric. What does it measure and what is the target?", "a": ["How much of the page loads above the fold, targeting 80 percent or more", "How many scripts run before first paint, targeting fewer than 10 scripts", "How quickly a page responds visually after a user interacts with it, targeting under 200 milliseconds", "How long the largest text block takes to render, targeting under 500 milliseconds"], "correct": 2}, {"q": "According to Google's guidance, what is the correct way to keep a page out of the search index?", "a": ["Add a disallow rule for the page in robots.txt, which removes it from the index", "Use a noindex tag or a login requirement, because robots.txt controls crawling rather than indexing", "Remove all internal links to the page so crawlers can never reach it", "Set the page to return a 302 temporary redirect to the homepage"], "correct": 1}, {"q": "How does Google describe the role of sitemaps in crawling?", "a": ["Sitemaps restrict Google to crawling only the URLs they contain", "Sitemaps replace internal linking as the primary discovery mechanism for a site", "Sitemaps guarantee that every listed page will be indexed within 24 hours", "Sitemaps tell Google which pages matter and help it prioritize crawling, which is especially useful for rapidly changing content or pages not discoverable through links"], "correct": 3}, {"q": "You are permanently moving a single page to a new location. Which response should you return, per Google's guidance?", "a": ["A 301 redirect, reserving 302 for moves that are only temporary", "A 302 redirect, reserving 301 for moves within the same directory", "A 404 error, so Google drops the old URL and discovers the new one on its own", "A 200 response on both URLs, letting Google pick the preferred version"], "correct": 0}, {"q": "What does Google advise when a user requests a page that has been removed?", "a": ["Return a 200 status with a message explaining the page has moved", "Redirect every removed page to the homepage to preserve link equity", "Return a true 404 error rather than a soft 404, and optionally serve a custom 404 page for a better experience", "Leave the page live but add a noindex tag so users can still reach it"], "correct": 2}, {"q": "Google notes that very large sites may not be crawled as completely as the owner would like. What mechanism does Google currently recommend for pointing crawlers at what matters?", "a": ["Manually submitting every important URL through the URL Inspection tool each week", "Listing the most recently updated or most important pages in sitemaps while using robots.txt to hide less important pages", "Reducing the crawl rate so Googlebot spends more time on each individual page", "Consolidating the entire site into fewer than 1,000 URLs before requesting a recrawl"], "correct": 1}, {"q": "Google warns that it can have trouble with infinite scroll pages. What does it recommend if you want that content crawled?", "a": ["Block the infinite scroll page in robots.txt and rely on the sitemap instead", "Load all results at once on a single page regardless of length", "Add a canonical tag on the scroll page pointing back to the homepage", "Provide a paginated version of the page"], "correct": 3}, {"q": "Per Google's crawling and indexing best practices, when should you apply rel=nofollow?", "a": ["On paid links, links that require login, and untrusted content such as user-submitted material", "On every outbound link, so no authority ever leaves the site", "On internal navigation links, to concentrate authority on the homepage", "On links to your own subdomains, to keep them ranking separately"], "correct": 0}, {"q": "Google states that blocked resources are surfaced only in one place. Where, and what should you do with that tool?", "a": ["In the Core Web Vitals report, where you compare field data against lab data", "In the Page Indexing report, where blocked pages appear alongside indexed ones", "In the URL Inspection tool at the individual URL level, where you can render the live page to verify Google sees it as expected", "In the sitemap submission screen, where errors are listed per sitemap file"], "correct": 2}, {"q": "What does Google recommend for URLs that change state, such as posting comments, creating accounts, or adding items to a cart?", "a": ["Apply a canonical tag pointing each one to the relevant category page", "Block access to those URLs using robots.txt", "Add them to the XML sitemap so Google understands the user journey", "Serve them a 301 redirect to a static version of the same page"], "correct": 1}, {"q": "Google advises putting key information in a specific format to help it understand a page. Which is it?", "a": ["In graphics and infographics, which Google reads through image recognition", "In downloadable PDFs, which Google prioritizes over HTML content", "In video transcripts hosted on a separate subdomain", "In text, since text remains the safest bet even though Google can parse many file types"], "correct": 3}, {"q": "Google describes the Data Highlighter tool as an option for site owners in a particular situation. Which one, and what is its drawback?", "a": ["For sites that cannot add structured data to their pages, though it can break if the page layout changes", "For sites that want to bypass the Rich Results Test before publishing markup", "For sites that need to generate hreflang tags without editing the head section", "For sites that want to submit URLs for indexing without using Search Console"], "correct": 0}, {"q": "What does Google say about which crawler it uses by default for websites?", "a": ["It alternates evenly between desktop and mobile crawlers for every site", "It uses a desktop crawler unless the site declares a separate mobile URL", "It now uses a mobile crawler as the default crawler for websites", "It uses a text-only crawler and renders pages only on request"], "correct": 2}, {"q": "How does Google process JavaScript on a website?", "a": ["In a single pass that executes scripts at the moment of discovery", "In phases: crawling, then rendering, then indexing", "By ignoring scripts entirely and indexing only the server-rendered HTML", "By requesting a dynamically rendered version from the site's server every time"], "correct": 1}, {"q": "How do AI crawlers such as GPTBot, OAI-SearchBot, and ClaudeBot differ from Googlebot in how they handle a page?", "a": ["Those AI crawlers ignore robots.txt directives entirely when fetching content", "Those AI crawlers only fetch pages that appear in an XML sitemap", "Those AI crawlers render pages more aggressively than Google, executing scripts multiple times", "Those AI crawlers generally do not execute JavaScript, so they rely on the initial HTML response and may miss content that appears only after rendering"], "correct": 3}, {"q": "Why is blocking JavaScript files and other rendering resources in robots.txt a problem?", "a": ["Blocking them can prevent Google from rendering the page and seeing important on-page content, which matters most for modern frameworks and single-page applications", "Blocking them causes Google to treat the entire domain as a soft 404", "Blocking them removes the page from the sitemap automatically", "Blocking them forces Google to fall back to the desktop crawler for the whole site"], "correct": 0}, {"q": "If a site wants visibility in ChatGPT search experiences, what should you check in robots.txt?", "a": ["That the sitemap directive appears before any user-agent block", "That OAI-SearchBot is not blocked from accessing the site's content", "That a crawl-delay of at least 10 seconds is set for all AI user agents", "That every AI user agent is explicitly disallowed except Googlebot"], "correct": 1}, {"q": "What does an AI agent work from when it interacts with a webpage?", "a": ["Only the XML sitemap entry and the page's meta description", "Only a cached copy of the page stored in the search engine's index", "The raw HTML, screenshots of the rendered page, and the underlying page accessibility structure", "Only the structured data block, ignoring the rest of the document"], "correct": 2}, {"q": "When preparing an ecommerce site for AI shopping agents, what should you verify about JavaScript on critical pages?", "a": ["That scripts are bundled into a single file to reduce total requests", "That every interactive element is rebuilt as a client-side component", "That JavaScript loads before the CSS so layout resolves first", "That critical pages still work without JavaScript, since some agents cannot execute scripts and would otherwise see a blank page"], "correct": 3}, {"q": "Reducing ambiguity across formats helps search and AI systems interpret a page. What does that mean in practice?", "a": ["Using consistent names for products, topics, and entities across body copy, metadata, images, URLs, and structured data so search and AI systems get one clear signal", "Publishing the same article in several formats so each can rank independently", "Varying your terminology throughout a page so it captures more long-tail keyword variations", "Removing images and video from pages so crawlers only have to interpret text"], "correct": 0}, {"q": "What problem does the canonical tag solve?", "a": ["It blocks crawlers from reaching low-value pages on the site", "It tells Google which version of similar or duplicate content should be indexed and ranked", "It speeds up rendering by deferring non-critical scripts", "It signals which language version of a page a given audience should see"], "correct": 1}, {"q": "What is an orphan page, and how do you fix one?", "a": ["A page returning a 5xx server error, fixed by restarting the hosting environment", "A page excluded by a noindex tag, fixed by removing the tag from the head section", "A page with no internal links pointing to it, fixed by adding links from other relevant pages on the site", "A page with duplicate metadata, fixed by rewriting the title tag and meta description"], "correct": 2}, {"q": "Your site loads at both the http and https versions of the domain without redirecting. What is the correct fix?", "a": ["Add a noindex tag to the http version and leave both accessible", "Submit separate sitemaps for each version so Google can tell them apart", "Leave both live, since search engines automatically consolidate protocol variants", "Choose the HTTPS version as your primary URL and set up 301 permanent redirects from the other variants"], "correct": 3}];
+// ---- Settings ----
+// Paste the Web app URL from your Apps Script deployment (ends in /exec).
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwOin2WIn-K7P6waD8XtYsA4mzSB9IZqC4gqhI-IuXnhROH4nrGPJ1XW3-kUFzznd7OvA/exec";
 var RECIPIENT = "jaym@outerbox.com";
 var QUIZ_TITLE = "Technical SEO Quiz";
+
+var QUIZ = [{"q": "What does technical SEO refer to?", "a": ["The process of writing keyword-rich page copy that satisfies user search intent", "The process of optimizing a website's architecture, coding, and other technical elements so search engines can crawl and index its pages", "The process of earning backlinks from authoritative domains to build site authority", "The process of managing paid search campaigns alongside organic listings"], "correct": 1}, {"q": "Which group is best positioned to influence a site's technical SEO metrics?", "a": ["Copywriters, bloggers, and copyeditors who produce page content", "Sales representatives and account managers who own the client relationship", "Web developers, programmers, and infrastructure managers who control the site and servers", "Social media managers who distribute content across channels"], "correct": 2}, {"q": "When did Google introduce Core Web Vitals as a set of website performance metrics?", "a": ["In August of 2014, at the same time HTTPS became a ranking signal", "In May of 2020, as metrics it considers critical to a good user experience", "In January of 2018, alongside the first mobile speed update", "In November of 2022, as part of the helpful content system"], "correct": 1}, {"q": "What does Largest Contentful Paint (LCP) measure, and what is the recommended target?", "a": ["How much page elements shift during load, with a target score of 0.1 or less", "How quickly the largest visible element on a page loads, within 2.5 seconds of load start", "How long the server takes to return the first byte, within 200 milliseconds", "How quickly the page becomes fully interactive, within 5 seconds"], "correct": 1}, {"q": "First Input Delay (FID), the original interactivity metric in Core Web Vitals, measures what, and what target should you hit?", "a": ["The total number of HTTP requests a page makes, ideally under 50 requests", "The time until the largest image finishes rendering, ideally under 2.5 seconds", "The time a user waits before they can perform an action such as clicking a link or button, ideally under 100 milliseconds", "The percentage of the viewport occupied by ads, ideally under 30 percent"], "correct": 2}, {"q": "What does Cumulative Layout Shift (CLS) measure, and what threshold should you stay under?", "a": ["The visual stability of a page as elements load, keeping the score at 0.1 or less", "The cumulative file size of all page assets, keeping it under 1 megabyte", "The number of layout templates used across a site, keeping it under 10", "The delay before the first paint of any content, keeping it under 1 second"], "correct": 0}, {"q": "What did Google's May 2021 Page Experience rollout add to search ranking?", "a": ["It replaced mobile-first indexing with a desktop-first crawler for all websites", "It removed page speed entirely as a consideration in organic rankings", "It made HTTPS the only technical requirement Google would evaluate going forward", "It made Core Web Vitals a ranking factor alongside signals like mobile-friendliness, safe browsing, and HTTPS security"], "correct": 3}, {"q": "Interaction to Next Paint (INP) replaced FID as the Core Web Vitals interactivity metric. What does it measure and what is the target?", "a": ["How much of the page loads above the fold, targeting 80 percent or more", "How many scripts run before first paint, targeting fewer than 10 scripts", "How quickly a page responds visually after a user interacts with it, targeting under 200 milliseconds", "How long the largest text block takes to render, targeting under 500 milliseconds"], "correct": 2}, {"q": "According to Google's guidance, what is the correct way to keep a page out of the search index?", "a": ["Add a disallow rule for the page in robots.txt, which removes it from the index", "Use a noindex tag or a login requirement, because robots.txt controls crawling rather than indexing", "Remove all internal links to the page so crawlers can never reach it", "Set the page to return a 302 temporary redirect to the homepage"], "correct": 1}, {"q": "How does Google describe the role of sitemaps in crawling?", "a": ["Sitemaps restrict Google to crawling only the URLs they contain", "Sitemaps replace internal linking as the primary discovery mechanism for a site", "Sitemaps guarantee that every listed page will be indexed within 24 hours", "Sitemaps tell Google which pages matter and help it prioritize crawling, which is especially useful for rapidly changing content or pages not discoverable through links"], "correct": 3}, {"q": "You are permanently moving a single page to a new location. Which response should you return, per Google's guidance?", "a": ["A 301 redirect, reserving 302 for moves that are only temporary", "A 302 redirect, reserving 301 for moves within the same directory", "A 404 error, so Google drops the old URL and discovers the new one on its own", "A 200 response on both URLs, letting Google pick the preferred version"], "correct": 0}, {"q": "What does Google advise when a user requests a page that has been removed?", "a": ["Return a 200 status with a message explaining the page has moved", "Redirect every removed page to the homepage to preserve link equity", "Return a true 404 error rather than a soft 404, and optionally serve a custom 404 page for a better experience", "Leave the page live but add a noindex tag so users can still reach it"], "correct": 2}, {"q": "Google notes that very large sites may not be crawled as completely as the owner would like. What mechanism does Google currently recommend for pointing crawlers at what matters?", "a": ["Manually submitting every important URL through the URL Inspection tool each week", "Listing the most recently updated or most important pages in sitemaps while using robots.txt to hide less important pages", "Reducing the crawl rate so Googlebot spends more time on each individual page", "Consolidating the entire site into fewer than 1,000 URLs before requesting a recrawl"], "correct": 1}, {"q": "Google warns that it can have trouble with infinite scroll pages. What does it recommend if you want that content crawled?", "a": ["Block the infinite scroll page in robots.txt and rely on the sitemap instead", "Load all results at once on a single page regardless of length", "Add a canonical tag on the scroll page pointing back to the homepage", "Provide a paginated version of the page"], "correct": 3}, {"q": "Per Google's crawling and indexing best practices, when should you apply rel=nofollow?", "a": ["On paid links, links that require login, and untrusted content such as user-submitted material", "On every outbound link, so no authority ever leaves the site", "On internal navigation links, to concentrate authority on the homepage", "On links to your own subdomains, to keep them ranking separately"], "correct": 0}, {"q": "Google states that blocked resources are surfaced only in one place. Where, and what should you do with that tool?", "a": ["In the Core Web Vitals report, where you compare field data against lab data", "In the Page Indexing report, where blocked pages appear alongside indexed ones", "In the URL Inspection tool at the individual URL level, where you can render the live page to verify Google sees it as expected", "In the sitemap submission screen, where errors are listed per sitemap file"], "correct": 2}, {"q": "What does Google recommend for URLs that change state, such as posting comments, creating accounts, or adding items to a cart?", "a": ["Apply a canonical tag pointing each one to the relevant category page", "Block access to those URLs using robots.txt", "Add them to the XML sitemap so Google understands the user journey", "Serve them a 301 redirect to a static version of the same page"], "correct": 1}, {"q": "Google advises putting key information in a specific format to help it understand a page. Which is it?", "a": ["In graphics and infographics, which Google reads through image recognition", "In downloadable PDFs, which Google prioritizes over HTML content", "In video transcripts hosted on a separate subdomain", "In text, since text remains the safest bet even though Google can parse many file types"], "correct": 3}, {"q": "Google describes the Data Highlighter tool as an option for site owners in a particular situation. Which one, and what is its drawback?", "a": ["For sites that cannot add structured data to their pages, though it can break if the page layout changes", "For sites that want to bypass the Rich Results Test before publishing markup", "For sites that need to generate hreflang tags without editing the head section", "For sites that want to submit URLs for indexing without using Search Console"], "correct": 0}, {"q": "What does Google say about which crawler it uses by default for websites?", "a": ["It alternates evenly between desktop and mobile crawlers for every site", "It uses a desktop crawler unless the site declares a separate mobile URL", "It now uses a mobile crawler as the default crawler for websites", "It uses a text-only crawler and renders pages only on request"], "correct": 2}, {"q": "How does Google process JavaScript on a website?", "a": ["In a single pass that executes scripts at the moment of discovery", "In phases: crawling, then rendering, then indexing", "By ignoring scripts entirely and indexing only the server-rendered HTML", "By requesting a dynamically rendered version from the site's server every time"], "correct": 1}, {"q": "How do AI crawlers such as GPTBot, OAI-SearchBot, and ClaudeBot differ from Googlebot in how they handle a page?", "a": ["Those AI crawlers ignore robots.txt directives entirely when fetching content", "Those AI crawlers only fetch pages that appear in an XML sitemap", "Those AI crawlers render pages more aggressively than Google, executing scripts multiple times", "Those AI crawlers generally do not execute JavaScript, so they rely on the initial HTML response and may miss content that appears only after rendering"], "correct": 3}, {"q": "Why is blocking JavaScript files and other rendering resources in robots.txt a problem?", "a": ["Blocking them can prevent Google from rendering the page and seeing important on-page content, which matters most for modern frameworks and single-page applications", "Blocking them causes Google to treat the entire domain as a soft 404", "Blocking them removes the page from the sitemap automatically", "Blocking them forces Google to fall back to the desktop crawler for the whole site"], "correct": 0}, {"q": "If a site wants visibility in ChatGPT search experiences, what should you check in robots.txt?", "a": ["That the sitemap directive appears before any user-agent block", "That OAI-SearchBot is not blocked from accessing the site's content", "That a crawl-delay of at least 10 seconds is set for all AI user agents", "That every AI user agent is explicitly disallowed except Googlebot"], "correct": 1}, {"q": "What does an AI agent work from when it interacts with a webpage?", "a": ["Only the XML sitemap entry and the page's meta description", "Only a cached copy of the page stored in the search engine's index", "The raw HTML, screenshots of the rendered page, and the underlying page accessibility structure", "Only the structured data block, ignoring the rest of the document"], "correct": 2}, {"q": "When preparing an ecommerce site for AI shopping agents, what should you verify about JavaScript on critical pages?", "a": ["That scripts are bundled into a single file to reduce total requests", "That every interactive element is rebuilt as a client-side component", "That JavaScript loads before the CSS so layout resolves first", "That critical pages still work without JavaScript, since some agents cannot execute scripts and would otherwise see a blank page"], "correct": 3}, {"q": "Reducing ambiguity across formats helps search and AI systems interpret a page. What does that mean in practice?", "a": ["Using consistent names for products, topics, and entities across body copy, metadata, images, URLs, and structured data so search and AI systems get one clear signal", "Publishing the same article in several formats so each can rank independently", "Varying your terminology throughout a page so it captures more long-tail keyword variations", "Removing images and video from pages so crawlers only have to interpret text"], "correct": 0}, {"q": "What problem does the canonical tag solve?", "a": ["It blocks crawlers from reaching low-value pages on the site", "It tells Google which version of similar or duplicate content should be indexed and ranked", "It speeds up rendering by deferring non-critical scripts", "It signals which language version of a page a given audience should see"], "correct": 1}, {"q": "What is an orphan page, and how do you fix one?", "a": ["A page returning a 5xx server error, fixed by restarting the hosting environment", "A page excluded by a noindex tag, fixed by removing the tag from the head section", "A page with no internal links pointing to it, fixed by adding links from other relevant pages on the site", "A page with duplicate metadata, fixed by rewriting the title tag and meta description"], "correct": 2}, {"q": "Your site loads at both the http and https versions of the domain without redirecting. What is the correct fix?", "a": ["Add a noindex tag to the http version and leave both accessible", "Submit separate sitemaps for each version so Google can tell them apart", "Leave both live, since search engines automatically consolidate protocol variants", "Choose the HTTPS version as your primary URL and set up 301 permanent redirects from the other variants"], "correct": 3}];
+
 var graded = false;
+var sending = false;
+var pending = null;
 
 function esc(s){
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -204,8 +224,115 @@ function selected(i){
   return -1;
 }
 
+// Score the answers without changing the page
+function collectResults(name, date){
+  var score = 0;
+  var answers = [];
+  for(var i=0;i<QUIZ.length;i++){
+    var pick = selected(i);
+    var right = QUIZ[i].correct;
+    var ok = pick === right;
+    if(ok){ score++; }
+    answers.push({
+      n: i+1,
+      q: QUIZ[i].q,
+      pick: pick,
+      answer: pick >= 0 ? QUIZ[i].a[pick] : "(no answer)",
+      correct: ok,
+      correctAnswer: QUIZ[i].a[right]
+    });
+  }
+  return { quiz: QUIZ_TITLE, name: name, date: date, score: score, total: QUIZ.length, answers: answers };
+}
+
+function highlight(results){
+  for(var i=0;i<QUIZ.length;i++){
+    var right = QUIZ[i].correct;
+    var pick = results.answers[i].pick;
+    document.getElementById("o"+i+"_"+right).classList.add("correct");
+    document.getElementById("m"+i+"_"+right).textContent = "Correct answer";
+    if(pick !== right){
+      document.getElementById("o"+i+"_"+pick).classList.add("wrong");
+      document.getElementById("m"+i+"_"+pick).textContent = "Your answer";
+    }
+    var radios = document.getElementsByName("q"+i);
+    for(var k=0;k<radios.length;k++){ radios[k].disabled = true; }
+  }
+  var pct = Math.round((results.score/results.total)*100);
+  document.getElementById("quiz").classList.add("graded");
+  document.getElementById("score").innerHTML = "Score: <span>"+results.score+" of "+results.total+" ("+pct+"%)</span>";
+}
+
+function finish(results){
+  graded = true;
+  highlight(results);
+  var btn = document.getElementById("submitBtn");
+  btn.disabled = true;
+  btn.textContent = "Submitted";
+}
+
+function showSuccess(){
+  document.getElementById("pop").classList.remove("fail");
+  document.getElementById("popTitle").textContent = "Thank you, your answers have been submitted";
+  document.getElementById("popMsg1").style.display = "";
+  document.getElementById("popMsg2").textContent = "Your results have been sent. There is nothing else you need to do.";
+  document.getElementById("popOk").textContent = "Got it";
+  document.getElementById("popAlt").classList.remove("show");
+  document.getElementById("overlay").classList.add("show");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function showFailure(){
+  document.getElementById("pop").classList.add("fail");
+  document.getElementById("popTitle").textContent = "Your results could not be sent";
+  document.getElementById("popMsg1").style.display = "none";
+  document.getElementById("popMsg2").textContent = "Please check your connection and choose Submit results again. If it keeps failing, use the email option below.";
+  document.getElementById("popOk").textContent = "Close and try again";
+  document.getElementById("popAlt").classList.add("show");
+  document.getElementById("overlay").classList.add("show");
+}
+
+function buildEmail(results){
+  var lines = [];
+  for(var i=0;i<results.answers.length;i++){
+    var a = results.answers[i];
+    lines.push(
+      a.n+". "+a.q+"\n"+
+      "   Your answer: "+a.answer+"\n"+
+      "   Result: "+(a.correct ? "Correct" : "Incorrect")+
+      (a.correct ? "" : "\n   Correct answer: "+a.correctAnswer)
+    );
+  }
+  var pct = Math.round((results.score/results.total)*100);
+  return {
+    subject: QUIZ_TITLE+" - "+results.name,
+    body: QUIZ_TITLE+"\n\n"+
+      "Name: "+results.name+"\n"+
+      "Date: "+results.date+"\n"+
+      "Score: "+results.score+" of "+results.total+" ("+pct+"%)\n\n"+
+      "----------------------------------------\n\n"+
+      lines.join("\n\n")+"\n"
+  };
+}
+
+// Backup route only: opens a pre-filled Gmail draft the candidate sends themselves
+function sendByEmail(){
+  if(!pending){ return; }
+  var mail = buildEmail(pending);
+  var gmail = "https://mail.google.com/mail/?view=cm&fs=1&to="+encodeURIComponent(RECIPIENT)+
+              "&su="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body);
+  var tab = window.open(gmail,"_blank");
+  if(!tab){
+    window.location.href = "mailto:"+RECIPIENT+
+      "?subject="+encodeURIComponent(mail.subject)+"&body="+encodeURIComponent(mail.body);
+  }
+  finish(pending);
+  showSuccess();
+  document.getElementById("popMsg2").textContent = "A pre-filled email has opened in a new tab. Send it to complete your submission.";
+}
+
 function submit(){
-  if(graded){ return; }
+  if(graded || sending){ return; }
   var name = document.getElementById("name").value.trim();
   var date = document.getElementById("date").value;
   var warn = document.getElementById("warn");
@@ -222,55 +349,49 @@ function submit(){
     return;
   }
 
-  var correctCount = 0;
-  var lines = [];
-  for(var i=0;i<QUIZ.length;i++){
-    var pick = selected(i);
-    var right = QUIZ[i].correct;
-    var ok = pick === right;
-    if(ok){ correctCount++; }
+  var results = collectResults(name, date);
+  pending = results;
 
-    document.getElementById("o"+i+"_"+right).classList.add("correct");
-    document.getElementById("m"+i+"_"+right).textContent = "Correct answer";
-    if(!ok){
-      document.getElementById("o"+i+"_"+pick).classList.add("wrong");
-      document.getElementById("m"+i+"_"+pick).textContent = "Your answer";
-    }
-
-    lines.push(
-      (i+1)+". "+QUIZ[i].q+"\n"+
-      "   Your answer: "+QUIZ[i].a[pick]+"\n"+
-      "   Result: "+(ok ? "Correct" : "Incorrect")+
-      (ok ? "" : "\n   Correct answer: "+QUIZ[i].a[right])
-    );
-  }
-
-  var pct = Math.round((correctCount/QUIZ.length)*100);
-  document.getElementById("quiz").classList.add("graded");
-  document.getElementById("score").innerHTML = "Score: <span>"+correctCount+" of "+QUIZ.length+" ("+pct+"%)</span>";
   var btn = document.getElementById("submitBtn");
+  sending = true;
   btn.disabled = true;
-  btn.textContent = "Submitted";
-  graded = true;
+  btn.textContent = "Sending...";
 
-  var subject = QUIZ_TITLE+" - "+name;
-  var body = QUIZ_TITLE+"\n\n"+
-    "Name: "+name+"\n"+
-    "Date: "+date+"\n"+
-    "Score: "+correctCount+" of "+QUIZ.length+" ("+pct+"%)\n\n"+
-    "----------------------------------------\n\n"+
-    lines.join("\n\n")+"\n";
-
-  var gmail = "https://mail.google.com/mail/u/0/?view=cm&fs=1&to="+encodeURIComponent(RECIPIENT)+
-              "&su="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-  var tab = window.open(gmail,"_blank");
-  if(!tab){
-    window.location.href = "mailto:"+encodeURIComponent(RECIPIENT)+
-      "?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf("/exec") === -1){
+    onFail(new Error("Results endpoint is not configured."));
+    return;
   }
 
-  document.getElementById("overlay").classList.add("show");
-  window.scrollTo({top:0,behavior:"smooth"});
+  var payload = {
+    quiz: results.quiz, name: results.name, date: results.date,
+    score: results.score, total: results.total, answers: results.answers,
+    website: document.getElementById("website").value,
+    submittedAt: new Date().toISOString()
+  };
+
+  // text/plain keeps this a "simple" request, so the browser skips the CORS preflight Apps Script can't answer
+  fetch(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload)
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(out){
+    if(!out || !out.ok){ throw new Error((out && out.error) || "Send failed"); }
+    sending = false;
+    finish(results);
+    showSuccess();
+  })
+  .catch(onFail);
+}
+
+function onFail(err){
+  console.error("Quiz submission failed:", err);
+  sending = false;
+  var btn = document.getElementById("submitBtn");
+  btn.disabled = false;
+  btn.textContent = "Submit results";
+  showFailure();
 }
 
 function hidePop(){ document.getElementById("overlay").classList.remove("show"); }
@@ -279,6 +400,7 @@ render();
 document.getElementById("submitBtn").addEventListener("click",submit);
 document.getElementById("popClose").addEventListener("click",hidePop);
 document.getElementById("popOk").addEventListener("click",hidePop);
+document.getElementById("popAlt").addEventListener("click",sendByEmail);
 document.getElementById("overlay").addEventListener("click",function(e){
   if(e.target === this){ hidePop(); }
 });
